@@ -50,10 +50,15 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://npm.pkg.github.com
+
       - name: Assemble artifacts
         run: ./gradlew assemble --stacktrace
 
-      - name: Publish artifacts to GitHub Packages
+      - name: Publish Maven artifacts to GitHub Packages
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -61,6 +66,18 @@ jobs:
           ./gradlew -PlibraryVersion="$VERSION" \
             :catalog:publishAllPublicationsToGitHubPackagesRepository \
             --stacktrace
+
+      - name: Assemble npm package
+        run: |
+          ./gradlew -PlibraryVersion="$VERSION" \
+            :catalog:assembleNpmPackage \
+            --stacktrace
+
+      - name: Publish npm package to GitHub Packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm publish
+        working-directory: catalog/build/npmPackage
 
       - name: Build XCFrameworks
         run: |
@@ -86,7 +103,7 @@ jobs:
             -f tag_name="v$VERSION" \
             -f name="v$VERSION" \
             -F draft=true \
-            -f body="Android: \`com.jaidensiu:orbit-catalog:$VERSION\` via GitHub Packages. iOS: SPM binary target \`OrbitCatalog\` (see Package.swift at tag v$VERSION)." \
+            -f body="Android: \`com.jaidensiu:orbit-catalog:$VERSION\` via GitHub Packages Maven. iOS: SPM binary target \`OrbitCatalog\` (see Package.swift at tag v$VERSION). Backend: \`@jaidensiu/orbit-catalog@$VERSION\` via GitHub Packages npm." \
             --jq .id)
           gh api --method POST \
             -H "Content-Type: application/zip" \

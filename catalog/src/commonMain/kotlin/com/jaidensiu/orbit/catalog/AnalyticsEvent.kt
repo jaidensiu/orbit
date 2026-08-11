@@ -1,39 +1,43 @@
 package com.jaidensiu.orbit.catalog
 
-interface AnalyticsEvent {
-    val name: String
-    val properties: Map<String, String>
-        get() = emptyMap()
-}
+import kotlin.js.JsExport
+import kotlin.native.ObjCName
 
-abstract class BaseAnalytics(
-    override val name: String,
-    override val properties: Map<String, String> = emptyMap(),
-    val operatingSystem: String? = null,
-    val sessionId: String? = null,
-    val appIdentifier: String? = null,
-    val appVersion: String? = null,
-    val buildType: String? = null,
-) : AnalyticsEvent {
+@JsExport
+@ObjCName(name = "AnalyticsEvent", exact = true)
+abstract class AnalyticsEvent internal constructor(
+    val name: String,
+    val properties: Map<String, String> = emptyMap(),
+) {
     init {
-        require(name.isNotBlank()) { "event name must not be blank" }
+        require(value = name.isNotBlank()) {
+            "event name must not be blank"
+        }
+        require(value = name.isSnakeCase()) {
+            "event name must be snake_case, got \"$name\""
+        }
+        properties.forEach { (key, value) ->
+            require(value = key.isNotBlank()) {
+                "property key must not be blank"
+            }
+            require(value = key.isSnakeCase()) {
+                "property key must be snake_case, got \"$key\""
+            }
+            require(value = value.isNotBlank()) {
+                "property value for key \"$key\" must not be blank"
+            }
+            require(value = value.isSnakeCase()) {
+                "property value for key \"$key\" must be snake_case, got \"$value\""
+            }
+        }
+    }
+
+    @JsExport.Ignore
+    private companion object {
+        val SNAKE_CASE = Regex(pattern = "^[a-z][a-z0-9]*(_[a-z0-9]+)*$")
+
+        fun String.isSnakeCase(): Boolean {
+            return matches(regex = SNAKE_CASE)
+        }
     }
 }
-
-abstract class UnauthenticatedUserEvent internal constructor(
-    name: String,
-    properties: Map<String, String> = emptyMap(),
-    val preLoginUserId: String,
-) : BaseAnalytics(name = name, properties = properties)
-
-abstract class UserEvent internal constructor(
-    name: String,
-    properties: Map<String, String> = emptyMap(),
-    val publicKeyId: String? = null,
-) : BaseAnalytics(name = name, properties = properties)
-
-abstract class AnonymizedEvent internal constructor(
-    name: String,
-    properties: Map<String, String> = emptyMap(),
-    val anonymizedUserId: String? = null,
-) : BaseAnalytics(name = name, properties = properties)
